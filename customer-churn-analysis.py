@@ -1,11 +1,12 @@
-import os
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
+from pyspark.sql.functions import udf
+from pyspark.sql.types import ArrayType, DoubleType
 from pyspark.ml.feature import StringIndexer, OneHotEncoder, VectorAssembler, ChiSqSelector
 from pyspark.ml.classification import LogisticRegression, DecisionTreeClassifier, RandomForestClassifier, GBTClassifier
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
-
+from pyspark.ml import Pipeline
+import os
 # Initialize Spark session
 spark = SparkSession.builder.appName("CustomerChurnMLlib").getOrCreate()
 
@@ -13,7 +14,6 @@ spark = SparkSession.builder.appName("CustomerChurnMLlib").getOrCreate()
 data_path = "customer_churn.csv"
 df = spark.read.csv(data_path, header=True, inferSchema=True)
 
-# Helper function to save pretty table to a text file
 def save_pretty_output(df, file_path, num_rows=5):
     with open(file_path, "w") as f:
         f.write("+--------------------+-----------+\n")
@@ -25,6 +25,10 @@ def save_pretty_output(df, file_path, num_rows=5):
 
 # Task 1: Data Preprocessing and Feature Engineering
 def preprocess_data(df):
+    # Fill missing values
+    # Encode categorical variables    
+    # One-hot encode indexed features
+    # Assemble features into a single vector 
     df = df.fillna({'TotalCharges': 0})
 
     categorical_cols = ["gender", "PhoneService", "InternetService", "Churn"]
@@ -47,8 +51,12 @@ def preprocess_data(df):
 
     return df.select("features", "label")
 
-# Task 2: Train and Evaluate Logistic Regression Model
+
+# Task 2: Splitting Data and Building a Logistic Regression Model
 def train_logistic_regression_model(df):
+    # Split data into training and testing sets
+    # Train logistic regression model
+    # Predict and evaluate
     train_df, test_df = df.randomSplit([0.8, 0.2], seed=42)
     lr = LogisticRegression(featuresCol="features", labelCol="label")
     model = lr.fit(train_df)
@@ -63,8 +71,9 @@ def train_logistic_regression_model(df):
 
     save_pretty_output(predictions, "output/task2/predictions_sample.txt")
 
-# Task 3: Feature Selection using Chi-Square Test
+# Task 3: Feature Selection Using Chi-Square Test
 def feature_selection(df):
+   
     selector = ChiSqSelector(numTopFeatures=5, featuresCol="features", labelCol="label", outputCol="selectedFeatures")
     result = selector.fit(df).transform(df)
 
@@ -77,8 +86,13 @@ def feature_selection(df):
             f.write(f"|{str(row.selectedFeatures):<20}|{row.label:<11}|\n")
         f.write("+--------------------+-----------+\n")
 
-# Task 4: Hyperparameter Tuning and Model Comparison
+
+# Task 4: Hyperparameter Tuning with Cross-Validation for Multiple Models
 def tune_and_compare_models(df):
+    # Split data
+    # Define models
+    # Define hyperparameter grids
+    # Perform cross-validation for each model
     train_df, test_df = df.randomSplit([0.8, 0.2], seed=42)
     evaluator = BinaryClassificationEvaluator(labelCol="label")
 
@@ -108,7 +122,14 @@ def tune_and_compare_models(df):
         predictions = best_model.transform(test_df)
         auc = evaluator.evaluate(predictions)
         results_file.write(f"{name} Best Model Accuracy (AUC): {auc:.2f}\n")
-        results_file.write(f"Best Params for {name}: {best_model.extractParamMap()}\n\n")
+        tuned_params = [param.name for param in grid[0].keys()]  # get tuned param names
+        best_params = best_model.extractParamMap()
+        param_str = ", ".join([
+            f"{param.name}={value}" 
+            for param, value in best_params.items() 
+            if param.name in tuned_params and param.parent == best_model.uid
+        ])
+        results_file.write(f"Best Params for {name}: {param_str}\n\n")
 
         # Save sample predictions
         with open(f"output/task4/{name}_predictions_sample.txt", "w") as pred_file:
@@ -118,8 +139,6 @@ def tune_and_compare_models(df):
             for row in predictions.select("features", "prediction").take(5):
                 pred_file.write(f"|{str(row.features):<20}|{row.prediction:<11}|\n")
             pred_file.write("+--------------------+-----------+\n")
-
-    results_file.close()
 
 # Execute tasks
 preprocessed_df = preprocess_data(df)
