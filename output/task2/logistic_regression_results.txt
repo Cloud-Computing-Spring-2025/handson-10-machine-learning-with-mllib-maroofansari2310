@@ -1,1 +1,0 @@
-Logistic Regression Model Accuracy (AUC): 0.84
