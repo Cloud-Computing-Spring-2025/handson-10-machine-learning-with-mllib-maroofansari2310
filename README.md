@@ -1,5 +1,3 @@
-# handson-10-MachineLearning-with-MLlib.
-
 # Customer Churn Prediction with MLlib
 
 This project uses Apache Spark MLlib to predict customer churn based on structured customer data. You will preprocess data, train classification models, perform feature selection, and tune hyperparameters using cross-validation.
@@ -31,17 +29,24 @@ Clean the dataset and prepare features for ML algorithms.
 3. Assemble numeric and encoded features into a single feature vector with `VectorAssembler`.
 4. Save first few rows of processed features into `outputs/task1_features.txt`.
 
+**Explanation of code:**
+1. The dataset is loaded and missing values in the TotalCharges column are filled with zero to handle data quality issues.
+2. Categorical columns are encoded using StringIndexer followed by OneHotEncoder to convert them into numerical format.
+3. Numeric and encoded categorical columns are then assembled into a single feature vector using VectorAssembler.
+This feature vector will be used as input for machine learning models.
+
 **Output:**
 ```bash
 +--------------------+-----------+
-|features            |label      |
+|features            |ChurnIndex |
 +--------------------+-----------+
-|[0.0,21.0,94.49,2120.34,1.0,1.0,1.0,0.0]|0.0        |
-|[1.0,3.0,83.8,225.05,1.0,1.0,0.0,1.0]|0.0        |
-|[0.0,2.0,73.21,149.8,1.0,0.0,0.0,1.0]|1.0        |
-|[1.0,21.0,42.56,885.5,1.0,0.0,0.0,1.0]|1.0        |
-|[1.0,4.0,82.21,335.05,0.0,0.0,0.0,1.0]|1.0        |
+|(8,[2,5,7],[67.91,1.0,1.0])|0.0        |
+|(8,[1,2,3,6],[62.0,84.27,5559.35,1.0])|0.0        |
+|(8,[1,2,3,7],[12.0,77.35,819.52,1.0])|0.0        |
+|(8,[1,2,3,6],[29.0,36.85,935.22,1.0])|0.0        |
+|(8,[1,2,3,5],[37.0,96.9,3226.44,1.0])|0.0        |
 +--------------------+-----------+
+
 ```
 ### Task 2: Train and Evaluate Logistic Regression Model
 
@@ -53,6 +58,12 @@ Train a logistic regression model and evaluate it using AUC (Area Under ROC Curv
 2. Train a logistic regression model.
 3. Use `BinaryClassificationEvaluator` to evaluate.
 4. Save evaluation results to `outputs/task2_logistic_auc.txt` and predictions to `outputs/task2_predictions.txt`.
+
+**Explanation of code:**
+1. The dataset is split into training (80%) and test (20%) sets using randomSplit.
+2. A LogisticRegression model is trained using the features vector and ChurnIndex label.
+3. The trained model is used to make predictions on the test data.
+4. Performance is evaluated using BinaryClassificationEvaluator based on AUC (Area Under the ROC Curve).
 
 **Output:**
 ```bash
@@ -67,16 +78,22 @@ Select the top 5 most important features using Chi-Square feature selection.
 1. Use `ChiSqSelector` to rank and select top 5 features.
 2. Save selected features and label sample to `outputs/task3_selected_features.txt`.
 
+**Explanation of code:**
+1. ChiSqSelector is used to perform statistical tests between input features and the target label.
+2. It ranks the features based on their importance in predicting churn.
+3. Only the top 5 most relevant features are selected to reduce dimensionality.
+4. The transformed dataset with selected features is displayed for verification.
+
 **Output:**
 ```bash
 +--------------------+-----------+
-|selectedFeatures    |label      |
+|selectedFeatures    |ChurnIndex |
 +--------------------+-----------+
-|[0.0,21.0,2120.34,1.0,0.0]|0.0        |
-|[1.0,3.0,225.05,0.0,1.0]|0.0        |
-|[0.0,2.0,149.8,0.0,1.0]|1.0        |
-|[1.0,21.0,885.5,0.0,1.0]|1.0        |
-|[1.0,4.0,335.05,0.0,1.0]|1.0        |
+|(5,[2,4],[67.91,1.0])|0.0        |
+|(5,[1,2,3],[62.0,84.27,1.0])|0.0        |
+|(5,[1,2,4],[12.0,77.35,1.0])|0.0        |
+|(5,[1,2,3],[29.0,36.85,1.0])|0.0        |
+|(5,[1,2],[37.0,96.9])|0.0        |
 +--------------------+-----------+
 ```
 ### Task 4: Hyperparameter Tuning and Model Comparison
@@ -96,14 +113,29 @@ Use CrossValidator to tune models and compare their AUC performance.
 3. Evaluate and print best model results.
 4. Save results to `outputs/task4_model_comparison.txt` and model-specific predictions in respective files.
 
+**Explanation of code:**
+1. Four classification models—Logistic Regression, Decision Tree, Random Forest, and GBT—are defined along with their hyperparameter grids.
+2. Each model is tuned using CrossValidator with 5-fold cross-validation to find the best-performing parameters.
+3. The best model from each tuning process is used to predict on the test set, and AUC is calculated.
+4. The model name, best AUC score, and optimal parameters are written to a result file for comparison.
 
 **Output:**
 ```bash
 Tuning LogisticRegression...
 LogisticRegression Best Model Accuracy (AUC): 0.76
+Best Params for LogisticRegression: maxIter=20, regParam=0.01
 
 Tuning DecisionTree...
-DecisionTree Best Model Accuracy (AUC): 0.81
+DecisionTree Best Model Accuracy (AUC): 0.85
+Best Params for DecisionTree: maxDepth=5
+
+Tuning RandomForest...
+RandomForest Best Model Accuracy (AUC): 0.78
+Best Params for RandomForest: maxDepth=10, numTrees=50
+
+Tuning GBT...
+GBT Best Model Accuracy (AUC): 0.78
+Best Params for GBT: maxDepth=5, maxIter=10
 
 ```
 ---
@@ -116,16 +148,15 @@ DecisionTree Best Model Accuracy (AUC): 0.81
 - `customer_churn.csv` placed in the project directory
 
 ### 2. Run the Project
-
+- Dataset generation
+```bash
+python dataset-generator.py
+```
 Run the main pipeline using:
 ```bash
-spark-submit customer_churn_analysis.py
+spark-submit customer-churn-analysis.py
 ```
 
 ### 3. Output Files
 All task results will be saved in the `outputs/` folder for easy access:
-- `outputs/task1/processed_sample.txt`
-- `outputs/task2/logistic_regression_results.txt`
-- `outputs/task3/selected_features_sample.txt`
-- `outputs/task4/model_comparison_results.txt`
-- `outputs/task4/RandomForest_predictions_sample.txt`
+
